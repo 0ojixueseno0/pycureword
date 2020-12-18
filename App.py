@@ -1,10 +1,12 @@
 from flask import Flask, request
+from flask_cors import *
 import config
 import hashlib
 import json
 
 
 app = Flask(__name__)
+CORS(app, support_credentials=True)
 
 @app.route('/api', methods=['GET', 'POST'])
 def api():
@@ -16,12 +18,12 @@ def api():
     return config.errors[0] # missing some data in url
   else:
     if secret == config.APItoken.getSecret(str(appid)):
-      return config.cureword.cureparse(
-        str(value),
-        str(request.method),
-        json.loads(request.get_data(as_text=True)),
-        str(appid)
-        )
+      if request.method == "GET":
+        return config.cureword.getparse(str(value),str(appid))
+      elif request.method == "POST":
+        return config.cureword.postparse(str(value),json.loads(request.get_data(as_text=True)),str(appid))
+      else:
+        return config.errors[9] #unknown error
     else:
       return config.errors[1] #sign verify failed
 

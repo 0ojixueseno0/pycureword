@@ -4,6 +4,7 @@ import difflib
 import uuid
 from threading import Thread
 import time
+import json
 import datetime
 
 """
@@ -36,7 +37,7 @@ errors = [
     "error_id": 50003,
     "error_info": "overly similar strings"
   },
-  {"title": "Curewords API - \u5fc3\u7075\u9e21\u6c64","interfaces": [{"method": "get","path": "/api","value": "?value=getword/get1st/randget&appid=youappid&secret=youkey","response": [{"info": "String","status": "String","words": ["string"]}]}]},
+  {"title": u"Curewords API - \u5fc3\u7075\u9e21\u6c64","interfaces": [{"method": "get","path": "/api","value": "?value=getword/get1st/randget&appid=youappid&secret=youkey","response": [{"info": "String","status": "String","words": ["string"]}]}]},
   {
     "status": "ERROR",
     "error_id": 50005,
@@ -104,95 +105,104 @@ class APItoken():
   @staticmethod
   def addCount(appid):
     count = APItoken.getCount(appid) + 1
+    print(f"[INFO] APPID[{str(appid)}] count + 1")
     cursor.execute(f"UPDATE token SET usecount={str(count)} WHERE appid = '{str(appid)}'")
     connect.commit()
 
 class cureword():
 
   @staticmethod
-  def cureparse(value,request_method,data,appid):
+  def getparse(value,appid):
     """
-    解析传入的value
+    GET请求
     """
     permission = APItoken.getPermission(appid)
     usecount = APItoken.getCount(appid)
-    if request_method == "GET":
-      if permission >= 1:
-        if permission == 1 and usecount >= 300:
-          return errors[11]
-        elif permission == 2 and usecount >= 500:
-          return errors[11]
-        elif permission == 3 and usecount >= 800:
-          return errors[11]
-        else:
-          if value == "get1st":
-            APItoken.addCount(appid)
-            return {
-              "status": "OK",
-              "info": "get the latest word",
-              "words": cureword.get1st()
-            }
-          elif value == "randget":
-            APItoken.addCount(appid)
-            return {
-              "status": "OK",
-              "info": "random get a word",
-              "words": cureword.randget()
-            }
-      elif permission >= 2:
-        if value == "getword":
-          APItoken.addCount(appid)
-          return {
-            "status": "OK",
-            "info": "get all words",
-            "words": cureword.getword()
-          }
+    if permission >= 1:
+      if permission == 1 and usecount >= 300:
+        return errors[11]
+      elif permission == 2 and usecount >= 500:
+        return errors[11]
+      elif permission == 3 and usecount >= 800:
+        return errors[11]
       else:
-        #权限为0时的示例
-        sample = ["这是一条例子","这是一条毒鸡汤(?)","这是一条鸡汤","这是示例中最新的句子"]
         if value == "get1st":
+          APItoken.addCount(appid)
           return {
             "status": "OK",
             "info": "get the latest word",
-            "words": sample[-1]
+            "words": cureword.get1st()
           }
         elif value == "randget":
+          APItoken.addCount(appid)
           return {
             "status": "OK",
             "info": "random get a word",
-            "words": sample[random.randint(0,3)]
+            "words": cureword.randget()
           }
         elif value == "getword":
-          return {
-            "status": "OK",
-            "info": "get all words",
-            "words": sample
-          }
-        else:
-          return errors[2] #value error
-    elif request_method == "POST":
-      if permission >= 3:
-        if permission == 3 and usecount >= 800:
-          return error[11]
-        else:
-          if value == "upload":
+          if permission >= 2:
+            print(appid)
             APItoken.addCount(appid)
-            return cureword.upload(data)
+            return {
+              "status": "OK",
+              "info": "get all words",
+              "words": cureword.getword()
+            }
           else:
-            return errors[2] #value error
-      if permission >= 4:
-        if value == "delete":
-          APItoken.addCount(appid)
-          return cureword.delete(data)
+            return errors[10]
         else:
-          return errors[2] #value error
+          return errors[2]
+    elif permission == 0:
+      #权限为0时的示例
+      sample = ["这是一条例子","这是一条毒鸡汤(?)","这是一条鸡汤","这是示例中最新的句子"]
+      if value == "get1st":
+        return {
+          "status": "OK",
+          "info": "get the latest word",
+          "words": sample[-1]
+        }
+      elif value == "randget":
+        return {
+          "status": "OK",
+          "info": "random get a word",
+          "words": sample[random.randint(0,3)]
+        }
+      elif value == "getword":
+        return {
+          "status": "OK",
+          "info": "get all words",
+          "words": sample
+        }
       else:
-        if value == "upload" or value == "delete":
-          return errors[10] #permission denied
+        return errors[2] #value error
+
+  @staticmethod
+  def postparse(value,data,appid):
+    """
+    解析post请求
+    """
+    if permission >= 3:
+      if permission == 3 and usecount >= 800:
+        return error[11]
+      else:
+        if value == "upload":
+          APItoken.addCount(appid)
+          return cureword.upload(data)
         else:
           return errors[2] #value error
+    elif permission >= 4:
+      if value == "delete":
+        APItoken.addCount(appid)
+        return cureword.delete(data)
+      else:
+        return errors[2] #value error
     else:
-      return errors[9] #unknown error
+      if value == "upload" or value == "delete":
+        return errors[10] #permission denied
+      else:
+        return errors[2] #value error
+
 
   @staticmethod
   def getword():
