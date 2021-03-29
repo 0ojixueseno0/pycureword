@@ -184,7 +184,7 @@ class cureword():
     """
     if permission >= 3:
       if permission == 3 and usecount >= 800:
-        return error[11]
+        return errors[11]
       else:
         if value == "upload":
           APItoken.addCount(appid)
